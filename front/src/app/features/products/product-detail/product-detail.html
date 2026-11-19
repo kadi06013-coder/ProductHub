@@ -1,0 +1,123 @@
+<nav class="navbar">
+  <a routerLink="/products" class="navbar-brand">
+    <div class="brand-icon">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M3.375 3C2.339 3 1.5 3.84 1.5 4.875v.75c0 1.036.84 1.875 1.875 1.875h17.25c1.035 0 1.875-.84 1.875-1.875v-.75C22.5 3.839 21.66 3 20.625 3H3.375z"/>
+        <path fill-rule="evenodd" d="M3.087 9l.54 9.176A3 3 0 006.62 21h10.757a3 3 0 002.995-2.824L20.913 9H3.087zm6.163 3.75A.75.75 0 0110 12h4a.75.75 0 010 1.5h-4a.75.75 0 01-.75-.75z" clip-rule="evenodd"/>
+      </svg>
+    </div>
+    <span>ShopAdmin</span>
+  </a>
+</nav>
+
+<div class="page-wrapper">
+  <!-- Back button -->
+  <div class="back-row">
+    <button class="back-btn" (click)="goBack()">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+        <path fill-rule="evenodd" d="M17 10a.75.75 0 01-.75.75H5.612l4.158 3.96a.75.75 0 11-1.04 1.08l-5.5-5.25a.75.75 0 010-1.08l5.5-5.25a.75.75 0 111.04 1.08L5.612 9.25H16.25A.75.75 0 0117 10z" clip-rule="evenodd"/>
+      </svg>
+      Retour aux produits
+    </button>
+  </div>
+
+  @if (loading()) {
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <p>Chargement…</p>
+    </div>
+  }
+
+  @if (error() && !loading()) {
+    <div class="error-state">
+      <p>{{ error() }}</p>
+      <button routerLink="/products">Retour à la liste</button>
+    </div>
+  }
+
+  @if (product() && !loading()) {
+    <div class="detail-layout">
+      <!-- Left: Image -->
+      <div class="image-col">
+        <div class="image-wrapper">
+          <img [src]="getImageUrl(product()!)" [alt]="product()!.name" class="product-image" />
+          <div class="status-overlay">
+            <span class="status-badge" [class.active]="product()!.is_active === 1">
+              <span class="status-dot"></span>
+              {{ product()!.is_active === 1 ? 'Actif' : 'Inactif' }}
+            </span>
+          </div>
+        </div>
+        <div class="image-actions">
+          <button class="btn-edit" (click)="edit()">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+              <path d="M5.433 13.917l1.262-3.155A4 4 0 017.58 9.42l6.92-6.918a2.121 2.121 0 013 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 01-.65-.65z"/>
+              <path d="M3.5 5.75c0-.69.56-1.25 1.25-1.25H10A.75.75 0 0010 3H4.75A2.75 2.75 0 002 5.75v9.5A2.75 2.75 0 004.75 18h9.5A2.75 2.75 0 0017 15.25V10a.75.75 0 00-1.5 0v5.25c0 .69-.56 1.25-1.25 1.25h-9.5c-.69 0-1.25-.56-1.25-1.25v-9.5z"/>
+            </svg>
+            Modifier
+          </button>
+          <button class="btn-delete" (click)="delete()">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.52.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4zM8.58 7.72a.75.75 0 00-1.5.06l.3 7.5a.75.75 0 101.5-.06l-.3-7.5zm4.34.06a.75.75 0 10-1.5-.06l-.3 7.5a.75.75 0 101.5.06l.3-7.5z" clip-rule="evenodd"/>
+            </svg>
+            Supprimer
+          </button>
+        </div>
+      </div>
+
+      <!-- Right: Info -->
+      <div class="info-col">
+        <div class="info-header">
+          <span class="info-category">{{ product()!.category_name ?? 'Sans catégorie' }}</span>
+          <h1 class="info-title">{{ product()!.name }}</h1>
+          <div class="info-price">{{ formatPrice(product()!.price) }}</div>
+        </div>
+
+        @if (product()!.description) {
+          <p class="info-description">{{ product()!.description }}</p>
+        }
+
+        <div class="info-grid">
+          <div class="info-item">
+            <span class="info-label">Stock</span>
+            <span class="info-value stock-badge" [class.in-stock]="product()!.stock > 0" [class.out-stock]="product()!.stock === 0">
+              {{ product()!.stock > 0 ? product()!.stock + ' unités' : 'Rupture de stock' }}
+            </span>
+          </div>
+          @if (product()!.sku) {
+            <div class="info-item">
+              <span class="info-label">SKU</span>
+              <span class="info-value sku-value">{{ product()!.sku }}</span>
+            </div>
+          }
+          @if (product()!.category_id) {
+            <div class="info-item">
+              <span class="info-label">Catégorie ID</span>
+              <span class="info-value">#{{ product()!.category_id }}</span>
+            </div>
+          }
+          <div class="info-item">
+            <span class="info-label">ID Produit</span>
+            <span class="info-value">#{{ product()!.id }}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Créé le</span>
+            <span class="info-value">{{ formatDate(product()!.created_at) }}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Mis à jour</span>
+            <span class="info-value">{{ formatDate(product()!.updated_at) }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+</div>
+
+@if (toast()) {
+  <div class="toast" [class.success]="toast()!.type === 'success'" [class.error]="toast()!.type === 'error'">
+    {{ toast()!.message }}
+  </div>
+}
+
+<app-confirm-dialog #confirmDialog />

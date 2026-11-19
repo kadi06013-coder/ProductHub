@@ -1,0 +1,128 @@
+
+<nav class="navbar">
+    <a routerLink="/products" class="navbar-brand">
+        <div class="brand-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                <path
+                    d="M3.375 3C2.339 3 1.5 3.84 1.5 4.875v.75c0 1.036.84 1.875 1.875 1.875h17.25c1.035 0 1.875-.84 1.875-1.875v-.75C22.5 3.839 21.66 3 20.625 3H3.375z" />
+                <path fill-rule="evenodd"
+                    d="M3.087 9l.54 9.176A3 3 0 006.62 21h10.757a3 3 0 002.995-2.824L20.913 9H3.087zm6.163 3.75A.75.75 0 0110 12h4a.75.75 0 010 1.5h-4a.75.75 0 01-.75-.75z"
+                    clip-rule="evenodd" />
+            </svg>
+        </div>
+        <span>ShopAdmin</span>
+    </a>
+
+    <div class="navbar-links">
+        <a routerLink="/products" class="nav-link">Produits</a>
+        <a routerLink="/categories" class="nav-link active">Catégories</a>
+    </div>
+</nav>
+
+<div class="categories-page">
+
+    <header class="page-header">
+        <div>
+            <h1>Gestion des catégories</h1>
+            <p>Ajouter, modifier et gérer les catégories de produits.</p>
+        </div>
+
+        <div class="category-count">
+            <span>{{ categoryCount() }}</span>
+            <small>Catégories</small>
+        </div>
+    </header>
+
+    <section class="category-form">
+        <h2>{{ editingId() !== null ? 'Modifier une catégorie' : 'Ajouter une catégorie' }}</h2>
+
+        <form (ngSubmit)="saveCategory()">
+            <input
+                type="text"
+                placeholder="Nom de la catégorie"
+                [ngModel]="categoryName()"
+                (ngModelChange)="categoryName.set($event)"
+                name="categoryName"
+                maxlength="100"
+                required
+            >
+
+            <button type="submit">
+                {{ editingId() !== null ? 'Enregistrer' : 'Ajouter' }}
+            </button>
+
+            @if (editingId() !== null) {
+                <button type="button" class="cancel-button" (click)="resetForm()">
+                    Annuler
+                </button>
+            }
+        </form>
+    </section>
+
+    @if (toast(); as notification) {
+        <div class="toast" [class.error]="notification.type === 'error'">
+            {{ notification.message }}
+        </div>
+    }
+
+    <section class="category-list">
+        <h2>Liste des catégories</h2>
+
+        <!-- Recherche en temps réel -->
+        <input
+            type="text"
+            placeholder="Rechercher une catégorie..."
+            [ngModel]="searchTerm()"
+            (ngModelChange)="searchTerm.set($event)"
+            name="searchCategory"
+        >
+
+        @if (loading()) {
+            <p>Chargement des catégories...</p>
+        } @else if (error()) {
+            <p class="error-message">{{ error() }}</p>
+            <button type="button" (click)="loadCategories()">Réessayer</button>
+        } @else if (categories().length === 0) {
+            <p>Aucune catégorie disponible.</p>
+        } @else if (filteredCategories().length === 0) {
+            <p>Aucune catégorie ne correspond à votre recherche.</p>
+        } @else {
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Nom</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    @for (category of filteredCategories(); track category.id) {
+                        <tr>
+                            <td>{{ category.id }}</td>
+                            <td>{{ category.name }}</td>
+                            <td class="actions">
+                                <button
+                                    type="button"
+                                    class="edit-button"
+                                    (click)="editCategory(category)">
+                                    Modifier
+                                </button>
+
+                                <button
+                                    type="button"
+                                    class="delete-button"
+                                    (click)="deleteCategory(category)">
+                                    Supprimer
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </section>
+
+    <app-confirm-dialog #confirmDialog></app-confirm-dialog>
+
+</div>

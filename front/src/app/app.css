@@ -1,0 +1,4 @@
+/* Global app resets */
+*, *::before, *::after {
+  box-sizing: border-box;
+}

@@ -1,0 +1,183 @@
+<nav class="navbar">
+  <a routerLink="/products" class="navbar-brand">
+    <div class="brand-icon">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+        <path
+          d="M3.375 3C2.339 3 1.5 3.84 1.5 4.875v.75c0 1.036.84 1.875 1.875 1.875h17.25c1.035 0 1.875-.84 1.875-1.875v-.75C22.5 3.839 21.66 3 20.625 3H3.375z" />
+        <path fill-rule="evenodd"
+          d="M3.087 9l.54 9.176A3 3 0 006.62 21h10.757a3 3 0 002.995-2.824L20.913 9H3.087zm6.163 3.75A.75.75 0 0110 12h4a.75.75 0 010 1.5h-4a.75.75 0 01-.75-.75z"
+          clip-rule="evenodd" />
+      </svg>
+    </div>
+    <span>ShopAdmin</span>
+  </a>
+
+  <div class="navbar-links">
+    <a routerLink="/products" class="nav-link">Produits</a>
+    <a routerLink="/categories" class="nav-link">Catégories</a>
+  </div>
+</nav>
+
+
+<div class="hero">
+  <div class="hero-content">
+    <h1 class="hero-title">Gestion des Produits</h1>
+    <p class="hero-subtitle">Gérez votre catalogue produits facilement</p>
+    <div class="stats-grid">
+      <div class="stat-card">
+        <span class="stat-value">{{ meta().total }}</span>
+        <span class="stat-label">Total Produits</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-value">{{ totalActive() }}</span>
+        <span class="stat-label">Actifs</span>
+      </div>
+      <div class="stat-card danger">
+        <span class="stat-value">{{ totalOutOfStock() }}</span>
+        <span class="stat-label">En Rupture</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<main class="main-content">
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <div class="search-box">
+      <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+        <path fill-rule="evenodd"
+          d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328A7 7 0 012 9z"
+          clip-rule="evenodd" />
+      </svg>
+      <input type="text" placeholder="Rechercher un produit…" [value]="searchQuery()"
+        (input)="onSearch($any($event.target).value)" class="search-input" />
+    </div>
+    <div class="filter-tabs">
+      <button class="filter-tab" [class.active]="statusFilter() === ''" (click)="onStatusFilter('')">Tous</button>
+      <button class="filter-tab" [class.active]="statusFilter() === '1'" (click)="onStatusFilter('1')">Actifs</button>
+      <button class="filter-tab" [class.active]="statusFilter() === '0'" (click)="onStatusFilter('0')">Inactifs</button>
+    </div>
+  </div>
+
+  <!-- Loading -->
+  @if (loading()) {
+  <div class="loading-state">
+    <div class="spinner"></div>
+    <p>Chargement des produits…</p>
+  </div>
+  }
+
+  <!-- Error -->
+  @if (error() && !loading()) {
+  <div class="error-state">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+      <path fill-rule="evenodd"
+        d="M9.401 3.003c1.155-2 4.043-2 5.197 0l7.355 12.748c1.154 2-.29 4.5-2.599 4.5H4.645c-2.309 0-3.752-2.5-2.598-4.5L9.4 3.003zM12 8.25a.75.75 0 01.75.75v3.75a.75.75 0 01-1.5 0V9a.75.75 0 01.75-.75zm0 8.25a.75.75 0 100-1.5.75.75 0 000 1.5z"
+        clip-rule="evenodd" />
+    </svg>
+    <p>{{ error() }}</p>
+    <button (click)="loadProducts()">Réessayer</button>
+  </div>
+  }
+
+  <!-- Empty state -->
+  @if (!loading() && !error() && products().length === 0) {
+  <div class="empty-state">
+    <div class="empty-icon">📦</div>
+    <h3>Aucun produit trouvé</h3>
+    <p>Aucun produit ne correspond à vos critères de recherche.</p>
+    <a routerLink="/products/new" class="btn-primary">+ Ajouter un produit</a>
+  </div>
+  }
+
+  <!-- Product Grid -->
+  @if (!loading() && !error() && products().length > 0) {
+  <div class="products-grid">
+    @for (product of products(); track product.id) {
+    <div class="product-card">
+      <div class="card-image-wrapper">
+        <img [src]="getImageUrl(product)" [alt]="product.name" class="card-image" loading="lazy" />
+        <span class="status-badge" [class.active]="product.is_active === 1" [class.inactive]="product.is_active === 0">
+          {{ product.is_active === 1 ? 'Actif' : 'Inactif' }}
+        </span>
+      </div>
+      <div class="card-body">
+        <div class="card-category">{{ product.category_name ?? 'Sans catégorie' }}</div>
+        <h3 class="card-title">{{ product.name }}</h3>
+        <div class="card-meta">
+          <span class="card-price">{{ formatPrice(product.price) }}</span>
+          <span class="card-stock" [class.out]="product.stock === 0">
+            {{ product.stock === 0 ? 'Rupture' : product.stock + ' en stock' }}
+          </span>
+        </div>
+        @if (product.sku) {
+        <div class="card-sku">SKU: {{ product.sku }}</div>
+        }
+        <div class="card-actions">
+          <button class="btn-view" (click)="viewProduct(product.id)" title="Voir">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="btn-icon">
+              <path d="M10 12.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" />
+              <path fill-rule="evenodd"
+                d="M.664 10.59a1.651 1.651 0 010-1.186A10.004 10.004 0 0110 3c4.257 0 7.893 2.66 9.336 6.41.147.381.146.804 0 1.186A10.004 10.004 0 0110 17c-4.257 0-7.893-2.66-9.336-6.41z"
+                clip-rule="evenodd" />
+            </svg>
+            Voir
+          </button>
+          <button class="btn-edit" (click)="editProduct(product.id)" title="Modifier">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="btn-icon">
+              <path
+                d="M5.433 13.917l1.262-3.155A4 4 0 017.58 9.42l6.92-6.918a2.121 2.121 0 013 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 01-.65-.65z" />
+              <path
+                d="M3.5 5.75c0-.69.56-1.25 1.25-1.25H10A.75.75 0 0010 3H4.75A2.75 2.75 0 002 5.75v9.5A2.75 2.75 0 004.75 18h9.5A2.75 2.75 0 0017 15.25V10a.75.75 0 00-1.5 0v5.25c0 .69-.56 1.25-1.25 1.25h-9.5c-.69 0-1.25-.56-1.25-1.25v-9.5z" />
+            </svg>
+            Modifier
+          </button>
+          <button class="btn-delete" (click)="deleteProduct(product)" title="Supprimer">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="btn-icon">
+              <path fill-rule="evenodd"
+                d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.52.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4zM8.58 7.72a.75.75 0 00-1.5.06l.3 7.5a.75.75 0 101.5-.06l-.3-7.5zm4.34.06a.75.75 0 10-1.5-.06l-.3 7.5a.75.75 0 101.5.06l.3-7.5z"
+                clip-rule="evenodd" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+    }
+  </div>
+
+  <!-- Pagination -->
+  @if (meta().totalPages > 1) {
+  <div class="pagination">
+    <button class="page-btn" [disabled]="currentPage() === 1" (click)="goToPage(currentPage() - 1)">
+      ← Précédent
+    </button>
+    @for (page of pages(); track page) {
+    <button class="page-btn" [class.current]="page === currentPage()" (click)="goToPage(page)">
+      {{ page }}
+    </button>
+    }
+    <button class="page-btn" [disabled]="currentPage() === meta().totalPages" (click)="goToPage(currentPage() + 1)">
+      Suivant →
+    </button>
+  </div>
+  }
+  }
+</main>
+
+<!-- FAB -->
+<a routerLink="/products/new" class="fab" title="Nouveau produit">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+    <path
+      d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
+  </svg>
+</a>
+
+<!-- Toast -->
+@if (toast()) {
+<div class="toast" [class.success]="toast()!.type === 'success'" [class.error]="toast()!.type === 'error'">
+  {{ toast()!.message }}
+</div>
+}
+
+<!-- Confirm Dialog -->
+<app-confirm-dialog #confirmDialog />
