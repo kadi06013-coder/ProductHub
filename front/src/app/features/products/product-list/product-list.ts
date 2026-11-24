@@ -1,27 +1,29 @@
-import { Component, signal, computed, inject, OnInit, ViewChild } from '@angular/core';
+import { Component, signal, computed, inject, OnInit, viewChild } from '@angular/core';
 import { Router, RouterModule } from '@angular/router';
-import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ProductService } from '../../../core/services/product.service';
 import { Product, ProductFilters } from '../../../core/models/product.model';
 import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog';
+import { extractApiError } from '../../../core/utils/api-error';
+import { createToast } from '../../../core/utils/toast';
 
 @Component({
   selector: 'app-product-list',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule, ConfirmDialogComponent],
+  imports: [RouterModule, FormsModule, ConfirmDialogComponent],
   templateUrl: './product-list.html',
   styleUrl: './product-list.css'
 })
 export class ProductListComponent implements OnInit {
   private readonly productService = inject(ProductService);
   private readonly router = inject(Router);
-  @ViewChild('confirmDialog') confirmDialog!: ConfirmDialogComponent;
+  private readonly confirmDialog = viewChild.required(ConfirmDialogComponent);
 
   products = signal<Product[]>([]);
   loading = signal(false);
   error = signal<string | null>(null);
-  toast = signal<{ message: string; type: 'success' | 'error' } | null>(null);
+  private readonly toaster = createToast();
+  toast = this.toaster.toast;
 
   searchQuery = signal('');
   statusFilter = signal<'' | '0' | '1'>('');
@@ -61,7 +63,7 @@ export class ProductListComponent implements OnInit {
         this.meta.set(res.meta);
         this.loading.set(false);
       },
-      error: (err) => {
+      error: () => {
         this.error.set('Impossible de charger les produits.');
         this.loading.set(false);
       }
@@ -69,13 +71,10 @@ export class ProductListComponent implements OnInit {
   }
 
   loadStats() {
-    this.productService.getAll({ page: 1, limit: 1, is_active: 1 }).subscribe({
-      next: (res) => this.totalActive.set(res.meta.total)
-    });
-    this.productService.getAll({ page: 1, limit: 9999 }).subscribe({
+    this.productService.getStats().subscribe({
       next: (res) => {
-        const oos = res.data.filter(p => p.stock === 0).length;
-        this.totalOutOfStock.set(oos);
+        this.totalActive.set(res.data.active);
+        this.totalOutOfStock.set(res.data.out_of_stock);
       }
     });
   }
@@ -110,7 +109,7 @@ export class ProductListComponent implements OnInit {
   }
 
   deleteProduct(product: Product) {
-    this.confirmDialog.open({
+    this.confirmDialog().open({
       title: 'Supprimer le produit',
       message: `Voulez-vous vraiment supprimer "${product.name}" ? Cette action est irréversible.`,
       confirmLabel: 'Supprimer',
@@ -121,16 +120,13 @@ export class ProductListComponent implements OnInit {
             this.loadProducts();
             this.loadStats();
           },
-          error: () => this.showToast('Erreur lors de la suppression', 'error')
+          error: (err) => this.showToast(extractApiError(err, 'Erreur lors de la suppression'), 'error')
         });
       }
     });
   }
 
-  showToast(message: string, type: 'success' | 'error') {
-    this.toast.set({ message, type });
-    setTimeout(() => this.toast.set(null), 3500);
-  }
+  showToast = this.toaster.show;
 
   formatPrice(price: number): string {
     return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(price);
@@ -140,7 +136,4 @@ export class ProductListComponent implements OnInit {
     return product.image_url || 'https://placehold.co/400x300/6366f1/ffffff?text=' + encodeURIComponent(product.name);
   }
 
-  trackById(_: number, p: Product) {
-    return p.id;
-  }
 }

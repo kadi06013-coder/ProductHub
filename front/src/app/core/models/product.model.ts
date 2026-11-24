@@ -29,6 +29,17 @@ export interface ProductResponse {
   data: Product;
 }
 
+export interface ProductStats {
+  total: number;
+  active: number;
+  out_of_stock: number;
+}
+
+export interface ProductStatsResponse {
+  success: boolean;
+  data: ProductStats;
+}
+
 export interface ProductFilters {
   page: number;
   limit: number;

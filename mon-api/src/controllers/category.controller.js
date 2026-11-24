@@ -1,71 +1,36 @@
 const Category = require('../models/category.model');
 const asyncHandler = require('../utils/asyncHandler');
-const response = require('../utils/response');
+const { success, created, notFound } = require('../utils/response');
+
+// MySQL errors (duplicate name, category still used by products) are translated
+// to 409 responses by the global error handler in app.js.
 
 const getAll = asyncHandler(async (req, res) => {
-    const categories = await Category.findAll();
-    return response.success(res, categories, 'Categories retrieved successfully');
+  const categories = await Category.findAll();
+  return success(res, categories, 'Categories retrieved successfully');
 });
 
 const getOne = asyncHandler(async (req, res) => {
-    const category = await Category.findById(req.params.id);
-
-    if (!category) {
-        return response.notFound(res, 'Category not found');
-    }
-
-    return response.success(res, category, 'Category retrieved successfully');
+  const category = await Category.findById(req.params.id);
+  if (!category) return notFound(res, 'Category not found');
+  return success(res, category, 'Category retrieved successfully');
 });
 
 const store = asyncHandler(async (req, res) => {
-    try {
-        const category = await Category.create(req.body);
-        return response.created(res, category, 'Category created successfully');
-    } catch (err) {
-        if (err.code === 'ER_DUP_ENTRY') {
-            return res.status(409).json({
-                success: false,
-                message: 'Category name already exists',
-            });
-        }
-        throw err;
-    }
+  const category = await Category.create(req.body);
+  return created(res, category, 'Category created successfully');
 });
 
 const update = asyncHandler(async (req, res) => {
-    try {
-        const category = await Category.update(req.params.id, req.body);
-
-        if (!category) {
-            return response.notFound(res, 'Category not found');
-        }
-
-        return response.success(res, category, 'Category updated successfully');
-    } catch (err) {
-        if (err.code === 'ER_DUP_ENTRY') {
-            return res.status(409).json({
-                success: false,
-                message: 'Category name already exists',
-            });
-        }
-        throw err;
-    }
+  const category = await Category.update(req.params.id, req.body);
+  if (!category) return notFound(res, 'Category not found');
+  return success(res, category, 'Category updated successfully');
 });
 
 const destroy = asyncHandler(async (req, res) => {
-    const deleted = await Category.remove(req.params.id);
-
-    if (!deleted) {
-        return response.notFound(res, 'Category not found');
-    }
-
-    return response.success(res, null, 'Category deleted successfully');
+  const deleted = await Category.remove(req.params.id);
+  if (!deleted) return notFound(res, 'Category not found');
+  return success(res, null, 'Category deleted successfully');
 });
 
-module.exports = {
-    getAll,
-    getOne,
-    store,
-    update,
-    destroy,
-};
+module.exports = { getAll, getOne, store, update, destroy };

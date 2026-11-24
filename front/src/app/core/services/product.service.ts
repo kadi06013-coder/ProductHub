@@ -1,12 +1,19 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { Product, ProductFilters, ProductListResponse, ProductResponse } from '../models/product.model';
+import { environment } from '../../../environments/environment';
+import {
+  Product,
+  ProductFilters,
+  ProductListResponse,
+  ProductResponse,
+  ProductStatsResponse
+} from '../models/product.model';
 
 @Injectable({ providedIn: 'root' })
 export class ProductService {
   private readonly http = inject(HttpClient);
-  private readonly baseUrl = 'http://localhost:3000/api/products';
+  private readonly baseUrl = `${environment.apiUrl}/products`;
 
   getAll(filters: ProductFilters): Observable<ProductListResponse> {
     let params = new HttpParams()
@@ -15,6 +22,10 @@ export class ProductService {
     if (filters.search) params = params.set('search', filters.search);
     if (filters.is_active !== undefined) params = params.set('is_active', filters.is_active.toString());
     return this.http.get<ProductListResponse>(this.baseUrl, { params });
+  }
+
+  getStats(): Observable<ProductStatsResponse> {
+    return this.http.get<ProductStatsResponse>(`${this.baseUrl}/stats`);
   }
 
   getById(id: number): Observable<ProductResponse> {

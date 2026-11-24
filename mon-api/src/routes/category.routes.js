@@ -2,7 +2,9 @@ const express = require('express');
 const router = express.Router();
 
 const categoryController = require('../controllers/category.controller');
-const { validateCategory } = require('../middlewares/validate.middleware');
+const { validateCategory, validateIdParam } = require('../middlewares/validate.middleware');
+
+router.param('id', validateIdParam);
 
 router.get('/', categoryController.getAll);
 router.get('/:id', categoryController.getOne);

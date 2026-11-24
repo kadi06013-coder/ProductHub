@@ -1,14 +1,15 @@
-import { Component, signal, inject, OnInit, ViewChild } from '@angular/core';
+import { Component, signal, inject, OnInit, viewChild } from '@angular/core';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
-import { CommonModule } from '@angular/common';
 import { ProductService } from '../../../core/services/product.service';
 import { Product } from '../../../core/models/product.model';
 import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog';
+import { extractApiError } from '../../../core/utils/api-error';
+import { createToast } from '../../../core/utils/toast';
 
 @Component({
   selector: 'app-product-detail',
   standalone: true,
-  imports: [CommonModule, RouterModule, ConfirmDialogComponent],
+  imports: [RouterModule, ConfirmDialogComponent],
   templateUrl: './product-detail.html',
   styleUrl: './product-detail.css'
 })
@@ -16,12 +17,13 @@ export class ProductDetailComponent implements OnInit {
   private readonly productService = inject(ProductService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
-  @ViewChild('confirmDialog') confirmDialog!: ConfirmDialogComponent;
+  private readonly confirmDialog = viewChild.required(ConfirmDialogComponent);
 
   product = signal<Product | null>(null);
   loading = signal(true);
   error = signal<string | null>(null);
-  toast = signal<{ message: string; type: 'success' | 'error' } | null>(null);
+  private readonly toaster = createToast();
+  toast = this.toaster.toast;
 
   ngOnInit() {
     const id = Number(this.route.snapshot.paramMap.get('id'));
@@ -50,7 +52,7 @@ export class ProductDetailComponent implements OnInit {
   delete() {
     const p = this.product();
     if (!p) return;
-    this.confirmDialog.open({
+    this.confirmDialog().open({
       title: 'Supprimer le produit',
       message: `Voulez-vous vraiment supprimer "${p.name}" ? Cette action est irréversible.`,
       confirmLabel: 'Supprimer',
@@ -60,7 +62,7 @@ export class ProductDetailComponent implements OnInit {
             this.showToast('Produit supprimé avec succès', 'success');
             setTimeout(() => this.router.navigate(['/products']), 1000);
           },
-          error: () => this.showToast('Erreur lors de la suppression', 'error')
+          error: (err) => this.showToast(extractApiError(err, 'Erreur lors de la suppression'), 'error')
         });
       }
     });
@@ -70,10 +72,7 @@ export class ProductDetailComponent implements OnInit {
     this.router.navigate(['/products']);
   }
 
-  showToast(message: string, type: 'success' | 'error') {
-    this.toast.set({ message, type });
-    setTimeout(() => this.toast.set(null), 3500);
-  }
+  showToast = this.toaster.show;
 
   formatPrice(price: number): string {
     return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(price);

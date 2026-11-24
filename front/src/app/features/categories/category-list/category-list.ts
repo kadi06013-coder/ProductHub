@@ -1,12 +1,11 @@
 
-import { CommonModule } from '@angular/common';
 import {
   Component,
   computed,
   inject,
   OnInit,
   signal,
-  ViewChild
+  viewChild
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
@@ -14,11 +13,13 @@ import { RouterModule } from '@angular/router';
 import { Category } from '../../../core/models/category.model';
 import { CategoryService } from '../../../core/services/category.service';
 import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog';
+import { extractApiError } from '../../../core/utils/api-error';
+import { createToast } from '../../../core/utils/toast';
 
 @Component({
   selector: 'app-category-list',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, ConfirmDialogComponent],
+  imports: [FormsModule, RouterModule, ConfirmDialogComponent],
   templateUrl: './category-list.html',
   styleUrl: './category-list.css'
 })
@@ -26,7 +27,7 @@ export class CategoryList implements OnInit {
 
   private readonly categoryService = inject(CategoryService);
 
-  @ViewChild('confirmDialog') confirmDialog!: ConfirmDialogComponent;
+  private readonly confirmDialog = viewChild.required(ConfirmDialogComponent);
 
   categories = signal<Category[]>([]);
   loading = signal(false);
@@ -48,7 +49,8 @@ export class CategoryList implements OnInit {
 
   categoryCount = computed(() => this.categories().length);
 
-  toast = signal<{ message: string; type: 'success' | 'error' } | null>(null);
+  private readonly toaster = createToast();
+  toast = this.toaster.toast;
 
   ngOnInit(): void {
     this.loadCategories();
@@ -101,7 +103,7 @@ export class CategoryList implements OnInit {
         if (err.status === 409) {
           this.showToast('Cette catégorie existe déjà.', 'error');
         } else {
-          this.showToast('Erreur lors de l’enregistrement.', 'error');
+          this.showToast(extractApiError(err, 'Erreur lors de l’enregistrement.'), 'error');
         }
       }
     });
@@ -113,7 +115,7 @@ export class CategoryList implements OnInit {
   }
 
   deleteCategory(category: Category): void {
-    this.confirmDialog.open({
+    this.confirmDialog().open({
       title: 'Supprimer la catégorie',
       message: `Voulez-vous vraiment supprimer "${category.name}" ?`,
       confirmLabel: 'Supprimer',
@@ -123,8 +125,13 @@ export class CategoryList implements OnInit {
             this.showToast('Catégorie supprimée avec succès.', 'success');
             this.loadCategories();
           },
-          error: () => {
-            this.showToast('Erreur lors de la suppression.', 'error');
+          error: (err) => {
+            this.showToast(
+              err.status === 409
+                ? 'Impossible de supprimer : cette catégorie contient encore des produits.'
+                : extractApiError(err, 'Erreur lors de la suppression.'),
+              'error'
+            );
           }
         });
       }
@@ -136,7 +143,5 @@ export class CategoryList implements OnInit {
     this.editingId.set(null);
   }
 
-  showToast(message: string, type: 'success' | 'error'): void {
-    this.toast.set({ message, type });
-  }
+  showToast = this.toaster.show;
 }

@@ -3,30 +3,37 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 
-// Import DB to trigger connection check
-require('./config/db');
-
 const productRoutes = require('./routes/product.routes');
 const categoryRoutes = require('./routes/category.routes');
+
 const app = express();
+const isProd = process.env.NODE_ENV === 'production';
 
 // ── Security ───────────────────────────────────────────────────────────────
 app.use(helmet());
 
 // ── CORS ───────────────────────────────────────────────────────────────────
+// CORS_ORIGIN accepts a comma-separated list. In production it MUST be set,
+// otherwise cross-origin requests are refused (never fall back to '*').
+const corsOrigin = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(',').map((o) => o.trim())
+  : isProd
+    ? false
+    : 'http://localhost:4200';
+
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || '*',
+  origin: corsOrigin,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
 // ── Body Parsers ───────────────────────────────────────────────────────────
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '100kb' }));
+app.use(express.urlencoded({ extended: true, limit: '100kb' }));
 
 // ── HTTP Logging ───────────────────────────────────────────────────────────
 if (process.env.NODE_ENV !== 'test') {
-  app.use(morgan('dev'));
+  app.use(morgan(isProd ? 'combined' : 'dev'));
 }
 
 // ── Health Check ───────────────────────────────────────────────────────────
@@ -45,22 +52,32 @@ app.use((req, res) => {
 
 // ── Global Error Handler ───────────────────────────────────────────────────
 app.use((err, req, res, next) => { // eslint-disable-line no-unused-vars
-  console.error('❌ Error:', err);
+  // Malformed JSON body
+  if (err.type === 'entity.parse.failed') {
+    return res.status(400).json({ success: false, message: 'Invalid JSON body' });
+  }
 
-  // Handle MySQL duplicate entry
+  // MySQL: duplicate entry (category name, product sku)
   if (err.code === 'ER_DUP_ENTRY') {
     return res.status(409).json({ success: false, message: 'Duplicate entry: a record with this value already exists.' });
   }
 
-  // Handle MySQL FK constraint
+  // MySQL: inserting/updating with a category that does not exist
   if (err.code === 'ER_NO_REFERENCED_ROW_2') {
     return res.status(400).json({ success: false, message: 'Invalid reference: the related resource does not exist.' });
   }
 
-  res.status(err.status || 500).json({
-    success: false,
-    message: err.message || 'Internal server error',
-  });
+  // MySQL: deleting a row that other rows still point to (category with products)
+  if (err.code === 'ER_ROW_IS_REFERENCED_2') {
+    return res.status(409).json({ success: false, message: 'Cannot delete: this resource is still used by other records.' });
+  }
+
+  console.error('❌ Error:', err);
+
+  const status = err.status || 500;
+  // Never leak internal error messages (SQL, stack hints…) to clients in production.
+  const message = status >= 500 && isProd ? 'Internal server error' : err.message || 'Internal server error';
+  res.status(status).json({ success: false, message });
 });
 
 module.exports = app;

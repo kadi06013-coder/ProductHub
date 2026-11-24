@@ -1,5 +1,4 @@
-import { Component, signal, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, signal } from '@angular/core';
 
 export interface DialogConfig {
   title: string;
@@ -12,8 +11,7 @@ export interface DialogConfig {
 @Component({
   selector: 'app-confirm-dialog',
   standalone: true,
-  imports: [CommonModule],
-  templateUrl: './confirm-dialog.html',
+    templateUrl: './confirm-dialog.html',
   styleUrl: './confirm-dialog.css'
 })
 export class ConfirmDialogComponent {

@@ -4,25 +4,19 @@ const { success, created, notFound } = require('../utils/response');
 
 // GET /api/products
 const getAll = asyncHandler(async (req, res) => {
-  const { page, limit, category_id, is_active, search } = req.query;
-  const result = await Product.findAll({
-    page: page || 1,
-    limit: limit || 10,
-    category_id: category_id !== undefined ? Number(category_id) : undefined,
-    is_active: is_active !== undefined ? Number(is_active) : undefined,
-    search,
+  const result = await Product.findAll(req.validatedQuery);
+  return success(res, result.data, 'Products retrieved successfully', 200, {
+    total: result.total,
+    page: result.page,
+    limit: result.limit,
+    totalPages: Math.ceil(result.total / result.limit),
   });
-  res.status(200).json({
-    success: true,
-    message: 'Products retrieved successfully',
-    data: result.data,
-    meta: {
-      total: result.total,
-      page: result.page,
-      limit: result.limit,
-      totalPages: Math.ceil(result.total / result.limit),
-    },
-  });
+});
+
+// GET /api/products/stats
+const getStats = asyncHandler(async (req, res) => {
+  const stats = await Product.getStats();
+  return success(res, stats, 'Product statistics retrieved successfully');
 });
 
 // GET /api/products/:id
@@ -38,19 +32,17 @@ const store = asyncHandler(async (req, res) => {
   return created(res, product, 'Product created successfully');
 });
 
-// PUT /api/products/:id
+// PUT /api/products/:id  (Product.update returns null when the id does not exist)
 const update = asyncHandler(async (req, res) => {
-  const existing = await Product.findById(req.params.id);
-  if (!existing) return notFound(res, 'Product not found');
   const product = await Product.update(req.params.id, req.body);
+  if (!product) return notFound(res, 'Product not found');
   return success(res, product, 'Product updated successfully');
 });
 
 // PATCH /api/products/:id
 const patch = asyncHandler(async (req, res) => {
-  const existing = await Product.findById(req.params.id);
-  if (!existing) return notFound(res, 'Product not found');
   const product = await Product.update(req.params.id, req.body);
+  if (!product) return notFound(res, 'Product not found');
   return success(res, product, 'Product patched successfully');
 });
 
@@ -61,4 +53,4 @@ const destroy = asyncHandler(async (req, res) => {
   return success(res, null, 'Product deleted successfully');
 });
 
-module.exports = { getAll, getOne, store, update, patch, destroy };
+module.exports = { getAll, getStats, getOne, store, update, patch, destroy };

@@ -1,16 +1,18 @@
-import { CommonModule } from '@angular/common';
-import { Component, computed, inject, OnInit, signal } from '@angular/core';
+import { Component, DestroyRef, computed, inject, OnInit, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { Category } from '../../../core/models/category.model';
 import { Product } from '../../../core/models/product.model';
 import { CategoryService } from '../../../core/services/category.service';
 import { ProductService } from '../../../core/services/product.service';
+import { extractApiError } from '../../../core/utils/api-error';
+import { createToast } from '../../../core/utils/toast';
 
 @Component({
   selector: 'app-product-form',
   standalone: true,
-  imports: [CommonModule, RouterModule, ReactiveFormsModule],
+  imports: [RouterModule, ReactiveFormsModule],
   templateUrl: './product-form.html',
   styleUrl: './product-form.css'
 })
@@ -20,13 +22,15 @@ export class ProductFormComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly fb = inject(FormBuilder);
+  private readonly destroyRef = inject(DestroyRef);
 
   isEdit = signal(false);
   productId = signal<number | null>(null);
   loading = signal(false);
   saving = signal(false);
   error = signal<string | null>(null);
-  toast = signal<{ message: string; type: 'success' | 'error' } | null>(null);
+  private readonly toaster = createToast();
+  toast = this.toaster.toast;
   categories = signal<Category[]>([]);
 
   imagePreview = signal<string | null>(null);
@@ -55,7 +59,7 @@ export class ProductFormComponent implements OnInit {
       this.loadProduct(Number(id));
     }
 
-    this.form.get('image_url')!.valueChanges.subscribe(val => {
+    this.form.get('image_url')!.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(val => {
       this.imagePreview.set(val || null);
     });
   }
@@ -105,9 +109,9 @@ export class ProductFormComponent implements OnInit {
         this.showToast(msg, 'success');
         setTimeout(() => this.router.navigate(['/products', res.data.id]), 1200);
       },
-      error: () => {
+      error: (err) => {
         this.saving.set(false);
-        this.showToast('Une erreur est survenue', 'error');
+        this.showToast(extractApiError(err, 'Une erreur est survenue'), 'error');
       }
     });
   }
@@ -120,10 +124,7 @@ export class ProductFormComponent implements OnInit {
     }
   }
 
-  showToast(message: string, type: 'success' | 'error') {
-    this.toast.set({ message, type });
-    setTimeout(() => this.toast.set(null), 3500);
-  }
+  showToast = this.toaster.show;
 
   hasError(field: string, error?: string): boolean {
     const ctrl = this.form.get(field);
